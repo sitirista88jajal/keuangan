@@ -72,11 +72,11 @@
                         <button type="button" id="btn-pilih-pemasukan" onclick="setJenis('pemasukan')" class="py-2 px-3 rounded-xl text-xs font-semibold border-2 border-emerald-500 bg-emerald-50 text-emerald-700">Pemasukan</button>
                         <button type="button" id="btn-pilih-pengeluaran" onclick="setJenis('pengeluaran')" class="py-2 px-3 rounded-xl text-xs font-semibold border border-slate-200 text-slate-500">Pengeluaran</button>
                     </div>
-                    <input type="text" id="deskripsi" required placeholder="Keterangan" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm">
-                    <input type="number" id="nominal" required min="1" placeholder="Jumlah (Rp)" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm">
-                    <select id="kategori" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm"></select>
-                    <input type="date" id="tanggal" required class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm" onchange="sesuaikanBulanDariTanggal()">
-                    <button type="submit" class="w-full bg-slate-900 text-white py-2.5 rounded-xl font-semibold text-sm">Simpan Transaksi</button>
+                    <input type="text" id="deskripsi" required placeholder="Keterangan" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-500">
+                    <input type="number" id="nominal" required min="1" placeholder="Jumlah (Rp)" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-500">
+                    <select id="kategori" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-500 bg-white"></select>
+                    <input type="date" id="tanggal" required class="w-full px-4 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-500" onchange="sesuaikanBulanDariTanggal()">
+                    <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl font-semibold text-sm transition-colors">Simpan Transaksi</button>
                 </form>
             </div>
             <div class="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
@@ -92,7 +92,7 @@
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
                 <h2 class="text-lg font-bold">Daftar Transaksi Bulan Ini</h2>
-                <button onclick="resetData()" class="px-3 py-1.5 bg-rose-50 text-rose-600 text-xs font-semibold rounded-xl">Bersihkan Data</button>
+                <button onclick="resetData()" class="px-3 py-1.5 bg-rose-50 text-rose-600 text-xs font-semibold rounded-xl hover:bg-rose-100 transition-colors">Bersihkan Data</button>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
@@ -114,14 +114,34 @@
         let transaksi = JSON.parse(localStorage.getItem('keuangan_asli_user')) || [];
         let jenisTerpilih = 'pemasukan'; 
         let chartInstance = null;
-        let bulanAktif = new Date().getMonth(); // Default langsung mengarah ke bulan sekarang secara riil
+        let bulanAktif = new Date().getMonth(); 
 
         function dapatkanTanggalLokalHariIni() { 
             const h = new Date(); 
             return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`; 
         }
 
+        // AMAN: Fungsi Perbaikan Migrasi Data Lama Tanpa Tanggal Valid
+        function migrasiDataLama() {
+            let adaPerubahan = false;
+            transaksi = transaksi.map(t => {
+                if (!t.tanggal || t.tanggal.trim() === "" || t.tanggal === "undefined") {
+                    t.tanggal = dapatkanTanggalLokalHariIni(); // Beri tanggal hari ini agar tidak hilang
+                    adaPerubahan = true;
+                }
+                if (!t.kategori) {
+                    t.kategori = 'Lainnya';
+                    adaPerubahan = true;
+                }
+                return t;
+            });
+            if (adaPerubahan) {
+                localStorage.setItem('keuangan_asli_user', JSON.stringify(transaksi));
+            }
+        }
+
         window.onload = function() { 
+            migrasiDataLama(); // Jalankan penyelamatan data saat halaman dimuat
             lucide.createIcons(); 
             setJenis('pemasukan'); 
             document.getElementById('tanggal').value = dapatkanTanggalLokalHariIni(); 
@@ -134,12 +154,15 @@
             const bP = document.getElementById('btn-pilih-pemasukan'); 
             const bK = document.getElementById('btn-pilih-pengeluaran'); 
             const sK = document.getElementById('kategori'); 
+            
+            if (!bP || !bK || !sK) return; // Proteksi error jika elemen belum termuat
+
             if (j === 'pemasukan') { 
-                bP.className = "py-2 px-3 rounded-xl text-xs font-semibold border-2 border-emerald-500 bg-emerald-50 text-emerald-700"; 
-                bK.className = "py-2 px-3 rounded-xl text-xs font-semibold border border-slate-200 text-slate-500"; 
+                bP.className = "py-2 px-3 rounded-xl text-xs font-semibold border-2 border-emerald-500 bg-emerald-50 text-emerald-700 w-full text-center"; 
+                bK.className = "py-2 px-3 rounded-xl text-xs font-semibold border border-slate-200 text-slate-500 w-full text-center"; 
             } else { 
-                bK.className = "py-2 px-3 rounded-xl text-xs font-semibold border-2 border-rose-500 bg-rose-50 text-rose-700"; 
-                bP.className = "py-2 px-3 rounded-xl text-xs font-semibold border border-slate-200 text-slate-500"; 
+                bK.className = "py-2 px-3 rounded-xl text-xs font-semibold border-2 border-rose-500 bg-rose-50 text-rose-700 w-full text-center"; 
+                bP.className = "py-2 px-3 rounded-xl text-xs font-semibold border border-slate-200 text-slate-500 w-full text-center"; 
             } 
             sK.innerHTML = ''; 
             daftarKategori[j].forEach(k => { 
@@ -154,20 +177,20 @@
             return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(a); 
         }
 
-        // Sinkronisasi otomatis dropdown atas saat tanggal di form diubah pengguna
         function sesuaikanBulanDariTanggal() {
             const tanggalInput = document.getElementById('tanggal').value;
             if (tanggalInput) {
                 const d = new Date(tanggalInput);
-                bulanAktif = d.getMonth();
-                document.getElementById('bulan-filter').value = bulanAktif;
-                renderLaporan();
+                if(!isNaN(d.getTime())) {
+                    bulanAktif = d.getMonth();
+                    document.getElementById('bulan-filter').value = bulanAktif;
+                    renderLaporan();
+                }
             }
         }
 
         function gantiBulanAktif() {
             bulanAktif = parseInt(document.getElementById('bulan-filter').value);
-            // Sesuaikan juga tanggal input ke tanggal 1 di bulan terpilih agar sinkron
             const tahunIni = new Date().getFullYear();
             const bulanStr = String(bulanAktif + 1).padStart(2, '0');
             document.getElementById('tanggal').value = `${tahunIni}-${bulanStr}-01`;
@@ -179,8 +202,10 @@
             const d = document.getElementById('deskripsi').value; 
             const n = parseFloat(document.getElementById('nominal').value); 
             const k = document.getElementById('kategori').value; 
-            const t = document.getElementById('tanggal').value; 
+            let t = document.getElementById('tanggal').value; 
             
+            if(!t) t = dapatkanTanggalLokalHariIni();
+
             transaksi.unshift({ 
                 id: Date.now(), 
                 jenis: jenisTerpilih, 
@@ -214,13 +239,14 @@
             let tP = 0; 
             let tK = 0; 
             
-            // Urutkan transaksi terbaru di atas
+            // Urutkan transaksi berdasarkan tanggal terbaru di atas
             transaksi.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
 
-            // Filter transaksi yang HANYA sesuai dengan bulan aktif terpilih
+            // Saring transaksi berdasarkan bulan aktif saat ini
             const transaksiBulanIni = transaksi.filter(t => {
+                if(!t.tanggal) return false;
                 const dateObj = new Date(t.tanggal);
-                return dateObj.getMonth() === bulanAktif;
+                return !isNaN(dateObj.getTime()) && dateObj.getMonth() === bulanAktif;
             });
 
             transaksiBulanIni.forEach(t => { 
@@ -257,7 +283,7 @@
                         <td class="p-4 text-xs text-slate-500 whitespace-nowrap">${t.tanggal}</td>
                         <td class="p-4 font-medium text-slate-700">
                             <div>${t.deskripsi}</div>
-                            <div class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded w-fit mt-0.5">${t.kategori}</div>
+                            <div class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded w-fit mt-0.5">${t.kategori || 'Lainnya'}</div>
                         </td>
                         <td class="p-4 text-right font-bold whitespace-nowrap ${t.jenis==='pemasukan'?'text-emerald-600':'text-rose-600'}">
                             ${t.jenis==='pemasukan'?'+':'-'} ${formatRupiah(t.nominal)}
@@ -272,15 +298,19 @@
             updateChart(); 
         }
 
-        // Fungsi baru menghitung saldo bulanan setahun penuh untuk grafik tren
         function hitungDataTahunan() {
             let saldoBulanan = Array(12).fill(0);
             transaksi.forEach(t => {
-                const m = new Date(t.tanggal).getMonth();
-                if (t.jenis === 'pemasukan') {
-                    saldoBulanan[m] += t.nominal;
-                } else {
-                    saldoBulanan[m] -= t.nominal;
+                if(t.tanggal) {
+                    const dateObj = new Date(t.tanggal);
+                    if(!isNaN(dateObj.getTime())) {
+                        const m = dateObj.getMonth();
+                        if (t.jenis === 'pemasukan') {
+                            saldoBulanan[m] += t.nominal;
+                        } else {
+                            saldoBulanan[m] -= t.nominal;
+                        }
+                    }
                 }
             });
             return saldoBulanan;
@@ -299,7 +329,7 @@
                     datasets: [{ 
                         label: 'Sisa Saldo (Rp)',
                         data: dataTahunan, 
-                        backgroundColor: dataTahunan.map(val => val < 0 ? '#f43f5e' : '#6366f1'), // Merah jika minus, Indigo jika positif
+                        backgroundColor: dataTahunan.map(val => val < 0 ? '#f43f5e' : '#6366f1'), 
                         borderRadius: 4
                     }] 
                 }, 
@@ -315,4 +345,15 @@
                             ticks: {
                                 callback: function(value) {
                                     if (value >= 1000000 || value <= -1000000) return (value / 1000000) + ' jt';
-                                    if (value >= 1000 || value <= -1000)
+                                    if (value >= 1000 || value <= -1000) return (value / 1000) + ' rb';
+                                    return value;
+                                }
+                            }
+                        }
+                    }
+                } 
+            }); 
+        }
+    </script>
+</body>
+</html>
