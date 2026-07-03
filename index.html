@@ -3,13 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Keuangan Bulanan - 1 Tahun</title>
+    <title>Laporan Keuangan Lengkap - FinansialKu</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .tab-aktif { background: #4f46e5; color: white; }
+        .tab-nonaktif { background: #f1f5f9; color: #475569; }
+        #area-laporan-pdf { background: white; padding: 2rem; max-width: 800px; margin: 0 auto; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-12">
@@ -19,7 +24,7 @@
                 <div class="p-2.5 bg-emerald-500 text-white rounded-2xl shadow-md shadow-emerald-500/20"><i data-lucide="wallet" class="w-6 h-6"></i></div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight">FinansialKu</h1>
-                    <p class="text-xs text-slate-500">Laporan & Catatan Keuangan 1 Tahun</p>
+                    <p class="text-xs text-slate-500">Laporan Keuangan Lengkap</p>
                 </div>
             </div>
             <div class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl w-full sm:w-auto">
@@ -40,30 +45,63 @@
             </div>
         </div>
     </header>
+
     <main class="max-w-6xl mx-auto px-4 mt-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Tombol Tampilan & Ekspor -->
+        <div class="flex flex-col sm:flex-row gap-3 mb-6 justify-between">
+            <div class="flex gap-2">
+                <button onclick="ubahTampilan('bulanan')" id="tab-bulanan" class="px-4 py-2 rounded-xl text-sm font-semibold tab-aktif">Bulanan</button>
+                <button onclick="ubahTampilan('tahunan')" id="tab-tahunan" class="px-4 py-2 rounded-xl text-sm font-semibold tab-nonaktif">Ringkasan 1 Tahun</button>
+                <button onclick="ubahTampilan('semua')" id="tab-semua" class="px-4 py-2 rounded-xl text-sm font-semibold tab-nonaktif">Semua Data</button>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+                <button onclick="eksporPDF()" class="px-3 py-2 bg-rose-50 text-rose-600 text-xs font-semibold rounded-xl hover:bg-rose-100 transition-colors flex items-center gap-1">
+                    <i data-lucide="file-text" class="w-4 h-4"></i> Unduh PDF
+                </button>
+                <button onclick="eksporCSV()" class="px-3 py-2 bg-blue-50 text-blue-600 text-xs font-semibold rounded-xl hover:bg-blue-100 transition-colors flex items-center gap-1">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Simpan Excel
+                </button>
+                <button onclick="salinRingkasan()" class="px-3 py-2 bg-emerald-50 text-emerald-600 text-xs font-semibold rounded-xl hover:bg-emerald-100 transition-colors flex items-center gap-1">
+                    <i data-lucide="copy" class="w-4 h-4"></i> Salin Ringkasan
+                </button>
+            </div>
+        </div>
+
+        <!-- Kartu Ringkasan -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
             <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Pemasukan</p>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1" id="label-pemasukan">Pemasukan Bulan Ini</p>
                     <h3 id="total-pemasukan" class="text-2xl font-bold text-emerald-600">Rp 0</h3>
                 </div>
                 <div class="p-4 bg-emerald-50 text-emerald-600 rounded-2xl"><i data-lucide="arrow-down-left" class="w-8 h-8"></i></div>
             </div>
             <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Pengeluaran</p>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1" id="label-pengeluaran">Pengeluaran Bulan Ini</p>
                     <h3 id="total-pengeluaran" class="text-2xl font-bold text-rose-600">Rp 0</h3>
                 </div>
                 <div class="p-4 bg-rose-50 text-rose-600 rounded-2xl"><i data-lucide="arrow-up-right" class="w-8 h-8"></i></div>
             </div>
             <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Selisih (Saldo Akhir)</p>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1" id="label-saldo">Saldo Bulan Ini</p>
                     <h3 id="total-selisih" class="text-2xl font-bold text-slate-800">Rp 0</h3>
                 </div>
                 <div class="p-4 bg-slate-50 text-slate-600 rounded-2xl"><i data-lucide="scale" class="w-8 h-8"></i></div>
             </div>
         </div>
+
+        <!-- Kartu Ringkasan Sepanjang Waktu -->
+        <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-8">
+            <h4 class="text-sm font-bold text-amber-800 mb-2 flex items-center gap-1"><i data-lucide="calendar-check" class="w-4 h-4"></i> Ringkasan Sepanjang Waktu</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                <div>Total Pemasukan: <span class="font-bold text-emerald-700" id="total-semua-pemasukan">Rp 0</span></div>
+                <div>Total Pengeluaran: <span class="font-bold text-rose-700" id="total-semua-pengeluaran">Rp 0</span></div>
+                <div>Saldo Akhir Keseluruhan: <span class="font-bold text-indigo-700" id="total-semua-saldo">Rp 0</span></div>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
             <div class="lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm h-fit">
                 <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><i data-lucide="plus-circle" class="w-5 h-5 text-emerald-500"></i> Tambah Transaksi</h2>
@@ -81,18 +119,19 @@
             </div>
             <div class="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
                 <div>
-                    <h3 class="text-sm font-bold text-slate-700 mb-1">Grafik Tren Saldo Bersih Bulanan (1 Tahun)</h3>
-                    <p class="text-xs text-slate-400 mb-4">Balok merah menandakan pengeluaran membengkak atau defisit pada bulan tersebut.</p>
+                    <h3 class="text-sm font-bold text-slate-700 mb-1">Grafik Tren Saldo Bersih Bulanan</h3>
+                    <p class="text-xs text-slate-400 mb-4">Balok merah menandakan defisit atau pengeluaran berlebih.</p>
                 </div>
                 <div class="relative h-[250px] w-full">
                     <canvas id="chartKeuangan"></canvas>
                 </div>
             </div>
         </div>
+
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                <h2 class="text-lg font-bold">Daftar Transaksi Bulan Ini</h2>
-                <button onclick="resetData()" class="px-3 py-1.5 bg-rose-50 text-rose-600 text-xs font-semibold rounded-xl hover:bg-rose-100 transition-colors">Bersihkan Data</button>
+                <h2 class="text-lg font-bold" id="judul-tabel">Daftar Transaksi Bulan Ini</h2>
+                <button onclick="resetData()" class="px-3 py-1.5 bg-rose-50 text-rose-600 text-xs font-semibold rounded-xl hover:bg-rose-100 transition-colors">Bersihkan Semua Data</button>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
@@ -100,11 +139,19 @@
                 </table>
             </div>
             <div id="status-kosong" class="p-8 text-center text-slate-400 hidden">
-                <p class="text-sm">Belum ada catatan transaksi pada bulan ini.</p>
+                <p class="text-sm">Belum ada catatan transaksi.</p>
             </div>
         </div>
     </main>
+
+    <!-- Area Tersembunyi untuk Cetak PDF -->
+    <div id="area-laporan-pdf" class="fixed left-[-9999px] top-0 w-full max-w-2xl">
+        <h2 class="text-2xl font-bold text-center mb-4">Laporan Keuangan FinansialKu</h2>
+        <div id="isi-laporan-pdf"></div>
+    </div>
+
     <script>
+        const { jsPDF } = window.jspdf;
         const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
         const daftarKategori = { 
             pemasukan: ['Gaji', 'Sampingan', 'Investasi', 'Lainnya'], 
@@ -115,18 +162,18 @@
         let jenisTerpilih = 'pemasukan'; 
         let chartInstance = null;
         let bulanAktif = new Date().getMonth(); 
+        let tampilanSaatIni = 'bulanan';
 
         function dapatkanTanggalLokalHariIni() { 
             const h = new Date(); 
             return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`; 
         }
 
-        // AMAN: Fungsi Perbaikan Migrasi Data Lama Tanpa Tanggal Valid
         function migrasiDataLama() {
             let adaPerubahan = false;
             transaksi = transaksi.map(t => {
                 if (!t.tanggal || t.tanggal.trim() === "" || t.tanggal === "undefined") {
-                    t.tanggal = dapatkanTanggalLokalHariIni(); // Beri tanggal hari ini agar tidak hilang
+                    t.tanggal = dapatkanTanggalLokalHariIni();
                     adaPerubahan = true;
                 }
                 if (!t.kategori) {
@@ -135,13 +182,11 @@
                 }
                 return t;
             });
-            if (adaPerubahan) {
-                localStorage.setItem('keuangan_asli_user', JSON.stringify(transaksi));
-            }
+            if (adaPerubahan) localStorage.setItem('keuangan_asli_user', JSON.stringify(transaksi));
         }
 
         window.onload = function() { 
-            migrasiDataLama(); // Jalankan penyelamatan data saat halaman dimuat
+            migrasiDataLama(); 
             lucide.createIcons(); 
             setJenis('pemasukan'); 
             document.getElementById('tanggal').value = dapatkanTanggalLokalHariIni(); 
@@ -154,9 +199,7 @@
             const bP = document.getElementById('btn-pilih-pemasukan'); 
             const bK = document.getElementById('btn-pilih-pengeluaran'); 
             const sK = document.getElementById('kategori'); 
-            
-            if (!bP || !bK || !sK) return; // Proteksi error jika elemen belum termuat
-
+            if (!bP || !bK || !sK) return;
             if (j === 'pemasukan') { 
                 bP.className = "py-2 px-3 rounded-xl text-xs font-semibold border-2 border-emerald-500 bg-emerald-50 text-emerald-700 w-full text-center"; 
                 bK.className = "py-2 px-3 rounded-xl text-xs font-semibold border border-slate-200 text-slate-500 w-full text-center"; 
@@ -165,27 +208,26 @@
                 bP.className = "py-2 px-3 rounded-xl text-xs font-semibold border border-slate-200 text-slate-500 w-full text-center"; 
             } 
             sK.innerHTML = ''; 
-            daftarKategori[j].forEach(k => { 
-                const o = document.createElement('option'); 
-                o.value = k; 
-                o.textContent = k; 
-                sK.appendChild(o); 
-            }); 
+            daftarKategori[j].forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = k; sK.appendChild(o); }); 
         }
 
-        function formatRupiah(a) { 
-            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(a); 
+        function formatRupiah(a) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(a); }
+
+        function ubahTampilan(tipe) {
+            tampilanSaatIni = tipe;
+            ['bulanan', 'tahunan', 'semua'].forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                el.className = t === tipe ? "px-4 py-2 rounded-xl text-sm font-semibold tab-aktif" : "px-4 py-2 rounded-xl text-sm font-semibold tab-nonaktif";
+            });
+            document.getElementById('bulan-filter').disabled = tipe !== 'bulanan';
+            renderLaporan();
         }
 
         function sesuaikanBulanDariTanggal() {
             const tanggalInput = document.getElementById('tanggal').value;
             if (tanggalInput) {
                 const d = new Date(tanggalInput);
-                if(!isNaN(d.getTime())) {
-                    bulanAktif = d.getMonth();
-                    document.getElementById('bulan-filter').value = bulanAktif;
-                    renderLaporan();
-                }
+                if(!isNaN(d.getTime())) { bulanAktif = d.getMonth(); document.getElementById('bulan-filter').value = bulanAktif; renderLaporan(); }
             }
         }
 
@@ -202,81 +244,79 @@
             const d = document.getElementById('deskripsi').value; 
             const n = parseFloat(document.getElementById('nominal').value); 
             const k = document.getElementById('kategori').value; 
-            let t = document.getElementById('tanggal').value; 
-            
-            if(!t) t = dapatkanTanggalLokalHariIni();
-
-            transaksi.unshift({ 
-                id: Date.now(), 
-                jenis: jenisTerpilih, 
-                deskripsi: d, 
-                nominal: n, 
-                kategori: k, 
-                tanggal: t 
-            }); 
-            
+            let t = document.getElementById('tanggal').value || dapatkanTanggalLokalHariIni();
+            transaksi.unshift({ id: Date.now(), jenis: jenisTerpilih, deskripsi: d, nominal: n, kategori: k, tanggal: t }); 
             localStorage.setItem('keuangan_asli_user', JSON.stringify(transaksi)); 
             renderLaporan(); 
-            document.getElementById('deskripsi').value = ''; 
-            document.getElementById('nominal').value = ''; 
+            document.getElementById('deskripsi').value = ''; document.getElementById('nominal').value = ''; 
         }
 
-        function hapusTransaksi(id) { 
-            transaksi = transaksi.filter(t => t.id !== id); 
-            localStorage.setItem('keuangan_asli_user', JSON.stringify(transaksi)); 
-            renderLaporan(); 
-        }
+        function hapusTransaksi(id) { transaksi = transaksi.filter(t => t.id !== id); localStorage.setItem('keuangan_asli_user', JSON.stringify(transaksi)); renderLaporan(); }
+        function resetData() { if (confirm('Yakin ingin menghapus SEMUA data transaksi?')) { transaksi = []; localStorage.setItem('keuangan_asli_user', JSON.stringify(transaksi)); renderLaporan(); } }
 
-        function resetData() { 
-            if (confirm('Apakah Anda yakin ingin menghapus seluruh riwayat data transaksi?')) { 
-                transaksi = []; 
-                localStorage.setItem('keuangan_asli_user', JSON.stringify(transaksi)); 
-                renderLaporan(); 
-            } 
+        function hitungRingkasanSemua() {
+            let semuaPemasukan = 0, semuaPengeluaran = 0;
+            transaksi.forEach(t => {
+                if(t.jenis === 'pemasukan') semuaPemasukan += t.nominal;
+                else semuaPengeluaran += t.nominal;
+            });
+            document.getElementById('total-semua-pemasukan').textContent = formatRupiah(semuaPemasukan);
+            document.getElementById('total-semua-pengeluaran').textContent = formatRupiah(semuaPengeluaran);
+            const saldoAkhir = semuaPemasukan - semuaPengeluaran;
+            document.getElementById('total-semua-saldo').textContent = formatRupiah(saldoAkhir);
         }
 
         function renderLaporan() { 
-            let tP = 0; 
-            let tK = 0; 
-            
-            // Urutkan transaksi berdasarkan tanggal terbaru di atas
+            let tP = 0, tK = 0; 
             transaksi.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+            let transaksiDitampilkan, judulTabel, labelP, labelK, labelS;
 
-            // Saring transaksi berdasarkan bulan aktif saat ini
-            const transaksiBulanIni = transaksi.filter(t => {
-                if(!t.tanggal) return false;
-                const dateObj = new Date(t.tanggal);
-                return !isNaN(dateObj.getTime()) && dateObj.getMonth() === bulanAktif;
-            });
+            if(tampilanSaatIni === 'bulanan') {
+                transaksiDitampilkan = transaksi.filter(t => {
+                    if(!t.tanggal) return false;
+                    const dateObj = new Date(t.tanggal);
+                    return !isNaN(dateObj.getTime()) && dateObj.getMonth() === bulanAktif;
+                });
+                judulTabel = `Daftar Transaksi ${namaBulan[bulanAktif]}`;
+                labelP = "Pemasukan Bulan Ini"; labelK = "Pengeluaran Bulan Ini"; labelS = "Saldo Bulan Ini";
+            } else if(tampilanSaatIni === 'tahunan') {
+                const tahunIni = new Date().getFullYear();
+                transaksiDitampilkan = transaksi.filter(t => {
+                    if(!t.tanggal) return false;
+                    const dateObj = new Date(t.tanggal);
+                    return !isNaN(dateObj.getTime()) && dateObj.getFullYear() === tahunIni;
+                });
+                judulTabel = `Daftar Transaksi Tahun ${tahunIni}`;
+                labelP = "Total Pemasukan Tahun Ini"; labelK = "Total Pengeluaran Tahun Ini"; labelS = "Saldo Akhir Tahun Ini";
+            } else {
+                transaksiDitampilkan = transaksi;
+                judulTabel = "Seluruh Daftar Transaksi";
+                labelP = "Total Pemasukan Keseluruhan"; labelK = "Total Pengeluaran Keseluruhan"; labelS = "Saldo Akhir Keseluruhan";
+            }
 
-            transaksiBulanIni.forEach(t => { 
-                if (t.jenis === 'pemasukan') tP += t.nominal; 
-                else tK += t.nominal; 
-            }); 
+            transaksiDitampilkan.forEach(t => { if (t.jenis === 'pemasukan') tP += t.nominal; else tK += t.nominal; }); 
 
+            document.getElementById('label-pemasukan').textContent = labelP;
+            document.getElementById('label-pengeluaran').textContent = labelK;
+            document.getElementById('label-saldo').textContent = labelS;
+            document.getElementById('judul-tabel').textContent = judulTabel;
             document.getElementById('total-pemasukan').textContent = formatRupiah(tP); 
             document.getElementById('total-pengeluaran').textContent = formatRupiah(tK); 
             
             const totalSelisih = tP - tK;
             const elSelisih = document.getElementById('total-selisih');
             elSelisih.textContent = formatRupiah(totalSelisih);
-            
-            if (totalSelisih < 0) {
-                elSelisih.className = "text-2xl font-bold text-rose-600";
-            } else if (totalSelisih > 0) {
-                elSelisih.className = "text-2xl font-bold text-emerald-600";
-            } else {
-                elSelisih.className = "text-2xl font-bold text-slate-800";
-            }
+            elSelisih.className = totalSelisih < 0 ? "text-2xl font-bold text-rose-600" : totalSelisih > 0 ? "text-2xl font-bold text-emerald-600" : "text-2xl font-bold text-slate-800";
+
+            hitungRingkasanSemua();
 
             const tbody = document.getElementById('tabel-transaksi-body'); 
             tbody.innerHTML = ''; 
-            
-            if(transaksiBulanIni.length === 0) {
+            if(transaksiDitampilkan.length === 0) {
                 document.getElementById('status-kosong').classList.remove('hidden');
             } else {
                 document.getElementById('status-kosong').classList.add('hidden');
-                transaksiBulanIni.forEach(t => { 
+                transaksiDitampilkan.forEach(t => { 
                     const tr = document.createElement('tr'); 
                     tr.className = "hover:bg-slate-50 transition-colors";
                     tr.innerHTML = `
@@ -300,16 +340,13 @@
 
         function hitungDataTahunan() {
             let saldoBulanan = Array(12).fill(0);
+            const tahunIni = new Date().getFullYear();
             transaksi.forEach(t => {
                 if(t.tanggal) {
                     const dateObj = new Date(t.tanggal);
-                    if(!isNaN(dateObj.getTime())) {
+                    if(!isNaN(dateObj.getTime()) && dateObj.getFullYear() === tahunIni) {
                         const m = dateObj.getMonth();
-                        if (t.jenis === 'pemasukan') {
-                            saldoBulanan[m] += t.nominal;
-                        } else {
-                            saldoBulanan[m] -= t.nominal;
-                        }
+                        t.jenis === 'pemasukan' ? saldoBulanan[m] += t.nominal : saldoBulanan[m] -= t.nominal;
                     }
                 }
             });
@@ -319,40 +356,64 @@
         function updateChart() { 
             const ctx = document.getElementById('chartKeuangan').getContext('2d'); 
             if (chartInstance) chartInstance.destroy(); 
-            
             const dataTahunan = hitungDataTahunan();
-
             chartInstance = new Chart(ctx, { 
                 type: 'bar', 
-                data: { 
-                    labels: namaBulan, 
-                    datasets: [{ 
-                        label: 'Sisa Saldo (Rp)',
-                        data: dataTahunan, 
-                        backgroundColor: dataTahunan.map(val => val < 0 ? '#f43f5e' : '#6366f1'), 
-                        borderRadius: 4
-                    }] 
-                }, 
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    if (value >= 1000000 || value <= -1000000) return (value / 1000000) + ' jt';
-                                    if (value >= 1000 || value <= -1000) return (value / 1000) + ' rb';
-                                    return value;
-                                }
-                            }
-                        }
-                    }
-                } 
+                data: { labels: namaBulan, datasets: [{ label: 'Sisa Saldo (Rp)', data: dataTahunan, backgroundColor: dataTahunan.map(val => val < 0 ? '#f43f5e' : '#6366f1'), borderRadius: 4 }] }, 
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v >= 1000000 || v <= -1000000 ? `${(v/1000000).toFixed(1)} jt` : v >= 1000 || v <= -1000 ? `${(v/1000).toFixed(0)} rb` : v } } } } 
             }); 
+        }
+
+        // FITUR EKSPOR & BERBAGI
+        async function eksporPDF() {
+            const isiLaporan = document.getElementById('isi-laporan-pdf');
+            isiLaporan.innerHTML = `
+                <div class="mb-4">
+                    <p>Ringkasan Pemasukan: ${document.getElementById('total-pemasukan').textContent}</p>
+                    <p>Ringkasan Pengeluaran: ${document.getElementById('total-pengeluaran').textContent}</p>
+                    <p>Saldo: ${document.getElementById('total-selisih').textContent}</p>
+                    <p>Ringkasan Keseluruhan: ${document.getElementById('total-semua-saldo').textContent}</p>
+                </div>
+                <table class="w-full border-collapse border border-gray-300 text-sm">
+                    <thead><tr class="bg-gray-100"><th class="border p-2">Tanggal</th><th class="border p-2">Keterangan</th><th class="border p-2">Kategori</th><th class="border p-2">Jumlah</th></tr></thead>
+                    <tbody>${document.getElementById('tabel-transaksi-body').innerHTML.replace(/<button.*<\/button>/g, '')}</tbody>
+                </table>
+            `;
+            const elemen = document.getElementById('area-laporan-pdf');
+            const canvas = await html2canvas(elemen, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const lebar = pdf.internal.pageSize.getWidth();
+            const tinggi = (canvas.height * lebar) / canvas.width;
+            pdf.addImage(imgData, 'PNG', 0, 10, lebar, tinggi);
+            pdf.save(`Laporan-Keuangan-${new Date().toLocaleDateString('id-ID')}.pdf`);
+            alert('Laporan PDF berhasil diunduh!');
+        }
+
+        function eksporCSV() {
+            let csv = "Tanggal,Jenis,Keterangan,Kategori,Nominal\n";
+            transaksi.forEach(t => {
+                csv += `"${t.tanggal}","${t.jenis}","${t.deskripsi.replace(/,/g, ' ')}","${t.kategori}",${t.nominal}\n`;
+            });
+            const berkas = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const tautan = document.createElement('a');
+            tautan.href = URL.createObjectURL(berkas);
+            tautan.download = `Data-Keuangan-${new Date().toLocaleDateString('id-ID')}.csv`;
+            tautan.click();
+            alert('Berkas data berhasil disimpan! Bisa dibuka di Excel/Google Sheets.');
+        }
+
+        function salinRingkasan() {
+            const teks = `📊 Laporan Keuangan FinansialKu
+📅 Periode: ${document.getElementById('judul-tabel').textContent}
+💰 Pemasukan: ${document.getElementById('total-pemasukan').textContent}
+💸 Pengeluaran: ${document.getElementById('total-pengeluaran').textContent}
+⚖️ Saldo: ${document.getElementById('total-selisih').textContent}
+📈 Ringkasan Sepanjang Waktu:
+- Pemasukan: ${document.getElementById('total-semua-pemasukan').textContent}
+- Pengeluaran: ${document.getElementById('total-semua-pengeluaran').textContent}
+- Saldo Akhir: ${document.getElementById('total-semua-saldo').textContent}`;
+            navigator.clipboard.writeText(teks).then(() => alert('Ringkasan berhasil disalin ke papan klip! Sekarang bisa ditempel dan dibagikan.'));
         }
     </script>
 </body>
